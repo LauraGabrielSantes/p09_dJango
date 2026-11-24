@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.env
+db.sqlite3
+*.sqlite3
+.venv/
+venv/
+back_end_django/logs/*.log
+servicio_auth/keys/private.pem
+*/logs/*.log

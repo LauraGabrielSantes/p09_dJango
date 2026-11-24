@@ -1,0 +1,166 @@
+services:
+
+  # ===========================
+  # BASE DE DATOS AUTH
+  # ===========================
+  postgres_auth:
+    image: postgres:16-alpine
+    container_name: postgres_auth
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d auth_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - microservices-network
+
+  # ===========================
+  # SERVICIO AUTH
+  # ===========================
+  servicio_auth:
+    build:
+      context: ./servicio_auth
+    container_name: servicio_auth
+    restart: unless-stopped
+    env_file:
+      - ./servicio_auth/.env
+
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000
+      "
+    ports:
+      - "8001:8000"
+    depends_on:
+      postgres_auth:
+          condition: service_healthy
+    volumes:
+      - ./servicio_auth:/app
+    networks:
+      - microservices-network
+
+  # ===========================
+  # BASE DE DATOS USUARIOS
+  # ===========================
+  postgres_usuarios:
+    image: postgres:16-alpine
+    container_name: postgres_usuarios
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: usuarios_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d usuarios_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_usuarios_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    networks:
+      - microservices-network
+
+  # ===========================
+  # SERVICIO USUARIOS
+  # ===========================
+  servicio_usuarios:
+    build:
+      context: ./servicio_usuarios
+    container_name: servicio_usuarios
+    restart: unless-stopped
+    env_file:
+      - ./servicio_usuarios/.env
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000
+      "
+    ports:
+      - "8002:8000"
+    depends_on:
+      postgres_usuarios:
+          condition: service_healthy
+    volumes:
+      - ./servicio_usuarios:/app
+    networks:
+      - microservices-network
+
+  # ===========================
+  # BASE DE DATOS PRODUCTOS
+  # ===========================
+  postgres_productos:
+    image: postgres:16-alpine
+    container_name: postgres_productos
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: productos_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d productos_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_productos_data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    networks:
+      - microservices-network
+
+  # ===========================
+  # SERVICIO PRODUCTOS
+  # ===========================
+  servicio_productos:
+    build:
+      context: ./servicio_productos
+    container_name: servicio_productos
+    restart: unless-stopped
+    env_file:
+      - ./servicio_productos/.env
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000
+      "
+    ports:
+      - "8003:8000"
+    depends_on:
+      postgres_productos:
+          condition: service_healthy
+    volumes:
+      - ./servicio_productos:/app
+    networks:
+      - microservices-network
+
+  gateway:
+    image: nginx:alpine
+    container_name: gateway
+    ports:
+      - "80:80"
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - servicio_auth
+      - servicio_usuarios
+      - servicio_productos
+    networks:
+      - microservices-network
+
+volumes:
+  postgres_auth_data:
+  postgres_usuarios_data:
+  postgres_productos_data:
+
+networks:
+  microservices-network:
+    driver: bridge
